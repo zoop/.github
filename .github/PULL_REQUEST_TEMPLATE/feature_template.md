@@ -4,16 +4,16 @@
 
 ### Adds 🚀
 
-- [ ] 🚀 (Add a brief description of what is being added here)
+- (Add a brief description of what is being added here)
 
 ### Removes 🗑️
 
-- [ ] 🗑️ (Add a brief description of what is being removed here)
+- (Add a brief description of what is being removed here)
 
 ### Fixes 🔧
 
-- [ ] 🔧 (Add a brief description of what is being fixed here)
+- (Add a brief description of what is being fixed here)
 
 ### Replaces 🔄
 
-- [ ] 🔄 (Add a brief description of what is being replaced here)
+- (Add a brief description of what is being replaced here)
