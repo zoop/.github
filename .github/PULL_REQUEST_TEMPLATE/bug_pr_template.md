@@ -1,9 +1,7 @@
-Sure, here's a bug PR template with some nice emojis:
-
 ## 🐛 Bug Description
 Please provide a clear and concise description of the bug.
 
-## 📊 Steps to Reproduce
+<!-- ## 📊 Steps to Reproduce
 Please provide the steps to reproduce the bug:
 
 1. 
@@ -24,4 +22,4 @@ Please provide details about your environment:
 - Version: 
 
 ## 🔍 Additional Information
-Please add any other information about the bug here, such as related issues or workarounds.
+Please add any other information about the bug here, such as related issues or workarounds. -->

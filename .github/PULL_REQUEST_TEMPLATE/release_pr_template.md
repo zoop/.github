@@ -1,5 +1,3 @@
-Sure, here's the updated product release template with the dependent service version added:
-
 # 🚀 Product Release: [Version Number]
 
 ## 📅 Release Date: [Date]
