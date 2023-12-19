@@ -21,7 +21,3 @@
 - Raftel: <Release Version>
 - Skypiea: <Release Version>
 - E-Sign SDK: <Release Version>
-
-If you have any questions or concerns, please contact our support team at [support email].
-
-Support email is `support@zoopsign.com`.

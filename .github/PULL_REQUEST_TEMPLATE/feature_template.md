@@ -17,3 +17,11 @@
 ### Replaces 🔄
 
 - (Add a brief description of what is being replaced here)
+
+### Feature 💡 
+
+- (Add a brief description of what is new feature is being added here)
+
+### Bug 🐞 
+
+- (Add a brief description of what is bug that is being solved here)
