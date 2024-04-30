@@ -1,0 +1,79 @@
+# .github/workflows/cd-workflow.yaml
+name: GKE Deployment Workflow
+
+on:
+  workflow_call:
+    inputs:
+      GKE_CLUSTER:
+        description: 'GKE Cluster Name'
+        type: string
+        required: true
+      GKE_REGION:
+        description: 'GKE Region'
+        type: string
+        required: true
+      IMAGE_TAG:
+        description: 'Image Tag'
+        type: string
+        required: true
+      GITHUB_SHA:
+        description: 'Github SHA'
+        type: string
+        required: true
+      ENV:
+        description: 'Environment'
+        type: string
+        required: true
+      GKE_NAMESPACE:
+        description: 'GKE Namespace'
+        type: string
+        required: true
+      REPO_NAME:
+        description: 'Repository Name'
+        type: string
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install the kubectl and GCP plugin for GKE
+        run: gcloud components install kubectl gke-gcloud-auth-plugin
+
+      - name: Check the config kubectl
+        run: kubectl config view
+
+      - name: Setup the GKE Cluster Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ github.event.inputs.GKE_CLUSTER }}
+          location: ${{ github.event.inputs.GKE_REGION }}
+
+      - name: Replace service image for the env in Deployment YAML
+        run: |
+          sed -i "s, APP_IMAGE, "${{ github.event.inputs.IMAGE_TAG }}:${{ github.event.inputs.GITHUB_SHA }}"," k8s/deployments/${{ github.event.inputs.ENV }}.deployment.yml
+
+      - name: Apply configmaps
+        run: kubectl apply -f k8s/configs/${{ github.event.inputs.ENV }}.configmap.yml --namespace ${{ github.event.inputs.GKE_NAMESPACE }}
+
+      - name: Apply deployment
+        run: kubectl apply -f k8s/deployments/${{ github.event.inputs.ENV }}.deployment.yml --namespace ${{ github.event.inputs.GKE_NAMESPACE }}
+
+      - name: Apply Service
+        run: kubectl apply -f k8s/service/${{ github.event.inputs.ENV }}.service.yml --namespace ${{ github.event.inputs.GKE_NAMESPACE }}
+
+      - name: Apply Horizontal pod scalar
+        run: kubectl apply -f k8s/hpa/${{ github.event.inputs.ENV }}.hpa.yml --namespace ${{ github.event.inputs.GKE_NAMESPACE }}
+
+      - name: Check if deployments are stable
+        run: |
+          while [[ "$(kubectl get pods --namespace ${{ github.event.inputs.GKE_NAMESPACE }} | tail -n +2 | awk '{print $3}' | grep -v 'Running\|Completed\|Terminating' | wc -l)" -gt 0 ]]; do
+            echo "Waiting for pods to stabilize..."
+            sleep 10
+          done
+
+      - name: Check if the deployment is stable
+        run: kubectl rollout status deployment zsp-backend
+
+      - name: Deployment Message
+        run: echo "Deployment successful"
