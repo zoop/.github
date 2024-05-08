@@ -40,6 +40,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs.ENV }}
     steps:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
@@ -49,7 +51,7 @@ jobs:
 
       - name: "Info Google cloud"
         run: "gcloud info"
-        
+
       - name: Install the kubectl and GCP plugin for GKE
         run: gcloud components install kubectl gke-gcloud-auth-plugin
 
