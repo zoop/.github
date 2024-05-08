@@ -43,6 +43,9 @@ jobs:
     environment: 
       name: ${{ github.event.inputs.ENV }}
     steps:
+      - name: "Echo all the variables"
+        uses: echo "${{ github.event.inputs.ENV }} ${{ vars.GKE_CLUSTER }}"
+
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
 
