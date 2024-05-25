@@ -1,0 +1,26 @@
+name: Clean the workflow runs
+
+on:
+    schedule:
+        # At the end of every day
+        - cron: "0 0 * * *"
+
+jobs:
+    stale:
+        runs-on: ubuntu-latest
+        permissions:
+            actions: write
+            contents: read
+        steps:
+            - name: Delete workflow runs
+              uses: Mattraks/delete-workflow-runs@v2
+              with:
+                token: ${{ secrets.PAT_GITHUB_TOKENS }}
+                repository: ${{ github.repository }}
+                retain_days: 30
+                keep_minimum_runs: 6
+            - uses: actions/stale@v1.1.0
+              with:
+                repo-token: ${{ secrets.GITHUB_TOKEN }}
+                stale-issue-message: 'Message to comment on stale issues. If none provided, will not mark issues stale'
+                stale-pr-message: 'Message to comment on stale PRs. If none provided, will not mark PRs stale'
