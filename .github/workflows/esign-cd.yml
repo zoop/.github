@@ -28,13 +28,6 @@ jobs:
       VSIGN_IMAGE: ${{ vars.GCR_HOSTNAME }}/${{ vars.GCR_PROJECT_ID }}/${{ vars.GAR_REPO }}/zsp-vsign:${{ inputs.VSIGN_IMAGE_SHA }}
 
     steps:
-      # Configure Workload Identity Federation and generate an access token.
-      - id: "auth"
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v2"
-        with:
-          credentials_json: "${{ secrets.GKE_SA_KEY }}"
-
       # Checkout repository to ESign Service
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,6 +37,13 @@ jobs:
           token: ${{ secrets.PAT_GITHUB_TOKEN }}
           sparse-checkout: "k8s"
           sparse-checkout-cone-mode: false
+    
+      # Configure Workload Identity Federation and generate an access token.
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GKE_SA_KEY }}"
 
       # Setup the gcloud configuration
       - name: "Set up Cloud SDK"
