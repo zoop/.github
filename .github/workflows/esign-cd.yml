@@ -1,0 +1,111 @@
+name: GKE Deployment Workflow - ESign
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: environment to deploy to
+        required: true
+      ESIGN_V1_IMAGE_SHA:
+        description: "Docker image SHA of the image"
+        type: string
+        required: false
+      VSIGN_IMAGE_SHA:
+        description: "Docker image SHA of the image"
+        type: string
+        required: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    permissions:
+      contents: "read"
+
+    env:
+      ESIGN_IMAGE: ${{ vars.GCR_HOSTNAME }}/${{ vars.GCR_PROJECT_ID }}/${{ vars.GAR_REPO }}/zsp-esign-v1:${{ inputs.ESIGN_V1_IMAGE_SHA }}
+      VSIGN_IMAGE: ${{ vars.GCR_HOSTNAME }}/${{ vars.GCR_PROJECT_ID }}/${{ vars.GAR_REPO }}/zsp-vsign:${{ inputs.VSIGN_IMAGE_SHA }}
+
+    steps:
+      # Checkout repository to ESign Service
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ZoopSign/zoop-esign-v1
+          ref: ${{ (github.ref_name == 'main' || startsWith(github.ref, 'v')) && 'main' || (github.ref_name == 'staging' || startsWith(github.ref, 'deploy.staging')) && 'staging' || (github.ref_name == 'develop' || startsWith(github.ref, 'deploy.develop'))   && 'develop' || 'main'}}
+          token: ${{ secrets.PAT_GITHUB_TOKEN }}
+          sparse-checkout: "k8s"
+          sparse-checkout-cone-mode: false
+
+      # Setup the gcloud configuration
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+
+      # Configure Workload Identity Federation and generate an access token.
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GKE_SA_KEY }}"
+
+      # Fetch the list of authentication
+      - name: "Use gcloud CLI"
+        run: 'gcloud auth list --filter=status:ACTIVE --format="value(account)"'
+
+      # Fetch the gcloud configuration
+      - name: "Info Google cloud"
+        run: "gcloud info"
+
+      # Install required kubernetes plugins
+      - name: Install the kubectl and GCP plugin for GKE
+        run: gcloud components install kubectl gke-gcloud-auth-plugin
+
+      # Fetch the kubectl configurations
+      - name: Check the config kubectl
+        run: kubectl config view
+
+      # Authenticate into the GKE cluster
+      - name: Setup the GKE Cluster Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ vars.GKE_CLUSTER }}
+          location: ${{ vars.GKE_REGION }}
+
+      # Replace the service image of each deployment
+      - name: Replace service image for the env in Deployment YAML
+        run: |
+          sed -i "s, APP_IMAGE_ESIGN, ${{ env.ESIGN_IMAGE }}," k8s/deployments/${{ vars.ENV }}.deployment.yml
+
+      - name: Replace the app image for VSIGN for the env in deployment YAML
+        run: |
+          sed -i "s, APP_IMAGE_VSIGN, ${{ env.VSIGN_IMAGE }}," k8s/deployments/${{ vars.ENV }}.deployment.yml
+
+      # Update the configmaps of the deployment
+      - name: Apply configmaps
+        run: kubectl apply -f k8s/configs/${{ vars.ENV }}.configmap.yml --namespace ${{ vars.GKE_NAMESPACE }}
+
+      # Update the deployment in k8s
+      - name: Apply deployment
+        run: kubectl apply -f k8s/deployments/${{ vars.ENV }}.deployment.yml --namespace ${{ vars.GKE_NAMESPACE }}
+
+      # Update the service
+      - name: Apply Service
+        run: kubectl apply -f k8s/service/${{ vars.ENV }}.service.yml --namespace ${{ vars.GKE_NAMESPACE }}
+
+      - name: Apply Horizontal pod scalar
+        run: kubectl apply -f k8s/hpa/${{ vars.ENV }}.hpa.yml --namespace ${{ vars.GKE_NAMESPACE }}
+
+      - name: Apply Auth Policy
+        run: |
+          kubectl apply -f k8s/service/${{ vars.ENV }}.authpolicy.yml --namespace=${{ vars.GKE_NAMESPACE }}
+
+      - name: Check if deployments are stable
+        run: |
+          while [[ "$(kubectl get deployment ${{ vars.GKE_DEPLOYMENT_NAME }} --namespace ${{ vars.GKE_NAMESPACE }} -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')" != "True" ]]; do
+            echo "Waiting for deployment to stabilize..."
+            sleep 10
+          done
+
+      - name: Deployment Message
+        run: echo "Deployment successful"
